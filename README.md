@@ -12,6 +12,7 @@ This project scrapes weekly deals from multiple grocery stores (currently Produc
 2. **Search and Interface**
    - **grocery_search.py** - Provides search functionality, price comparison, and OpenAI integration
    - **grocery_chatbot.py** - Streamlit web interface for the chatbot
+   - **grocery_api.py** - FastAPI backend for the chatbot
 
 3. **Utility Scripts**
    - **run_all_scrapers.py** - Runs all available scrapers to populate the database
@@ -51,7 +52,62 @@ python test_chroma_collections.py
 
 This will show sample results from each store collection.
 
-### Step 3: Run the Chatbot
+### Step 3: Run the API Server
+
+#### Development Mode
+For development with automatic reloading when code changes:
+```bash
+uvicorn grocery_api:app --host 0.0.0.0 --port 8000 --reload
+```
+
+#### Production Mode
+For production deployment with multiple workers:
+```bash
+uvicorn grocery_api:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+For better performance in production:
+```bash
+uvicorn grocery_api:app --host 0.0.0.0 --port 8000 --workers 4 --proxy-headers --forwarded-allow-ips='*' --log-level warning
+```
+
+For maximum performance using Gunicorn with Uvicorn workers:
+```bash
+gunicorn grocery_api:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
+```
+
+#### Running as a Service
+For a proper production setup, create a systemd service:
+
+1. Create a service file:
+   ```bash
+   sudo nano /etc/systemd/system/grocery-api.service
+   ```
+
+2. Add the following content:
+   ```
+   [Unit]
+   Description=Grocery API Service
+   After=network.target
+
+   [Service]
+   User=your_username
+   WorkingDirectory=/path/to/your/app
+   ExecStart=/path/to/your/venv/bin/uvicorn grocery_api:app --host 0.0.0.0 --port 8000 --workers 4
+   Restart=always
+   RestartSec=5
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+3. Enable and start the service:
+   ```bash
+   sudo systemctl enable grocery-api
+   sudo systemctl start grocery-api
+   ```
+
+### Step 4: Run the Chatbot
 
 Launch the Streamlit chatbot interface:
 
@@ -108,4 +164,4 @@ To add a new grocery store:
 - Semantic search is used to find relevant deals
 - OpenAI's API generates natural language responses and analyzes price comparisons
 - Streamlit provides the web interface
-- The system is designed to be modular for easy addition of new stores 
+- The system is designed to be modular for easy addition of new stores

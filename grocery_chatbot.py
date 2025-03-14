@@ -3,11 +3,10 @@ import os
 import warnings
 import json
 import re
-from grocery_search import create_grocery_search_interface, get_openai_response, compare_prices, process_query as process_search_query
-from ai_providers import get_ai_provider, OPENAI_AVAILABLE, OPENAI_API_NOT_AVAILABLE_MSG, GOOGLE_AVAILABLE
-import chromadb
+import requests
 import pandas as pd
 import altair as alt
+import chromadb
 
 # Set page configuration
 st.set_page_config(
@@ -204,6 +203,9 @@ if "selected_stores" not in st.session_state:
 if "ai_provider" not in st.session_state:
     st.session_state.ai_provider = "auto"
 
+# API configuration
+API_BASE_URL = "http://localhost:8000"  # Change this to your API server address
+
 def get_store_badge(store_name):
     """Generate HTML for a store badge with appropriate styling."""
     store_class = store_name.lower().replace(' ', '-')
@@ -238,24 +240,17 @@ def display_chat_message(role, content, avatar, ai_provider=None):
         st.markdown("---")
 
 def get_available_stores():
-    """Get a list of available stores from the ChromaDB collections."""
-    available_stores = []
+    """Get a list of available stores from the API."""
     try:
-        client = chromadb.PersistentClient(path="./grocery_deals_db")
-        
-        # Get all collections - in ChromaDB v0.6.0, these are just strings
-        collection_names = client.list_collections()
-        print(f"Debug - Collection names: {collection_names}")
-        
-        # Filter for only deal collections
-        for name in collection_names:
-            if isinstance(name, str) and name.endswith("_deals"):
-                store_name = name.replace("_deals", "").replace("_", " ").title()
-                available_stores.append(store_name)
+        response = requests.get(f"{API_BASE_URL}/api/stores")
+        if response.status_code == 200:
+            return response.json()["stores"]
+        else:
+            print(f"Error getting stores: {response.status_code} - {response.text}")
+            return []
     except Exception as e:
         print(f"Error getting available stores: {e}")
-    
-    return available_stores
+        return []
 
 def filter_results_by_stores(results, selected_stores):
     """Filter results by selected stores."""
@@ -385,58 +380,63 @@ def create_comparison_table_html(similar_items):
     return html
 
 def process_query(query):
-    """Process a user query and generate a response."""
+    """Process a user query and generate a response using the API."""
     # Add user message to chat history
     st.session_state.messages.append({"role": "user", "content": query})
     
     try:
-        # Print the selected AI provider for debugging
-        print(f"Using AI provider: {st.session_state.ai_provider}")
+        # Call the API to process the query
+        payload = {
+            "query": query,
+            "ai_provider": st.session_state.ai_provider,
+            "selected_stores": st.session_state.selected_stores
+        }
         
-        # Use the improved process_query function from grocery_search.py with the selected AI provider
-        response = process_search_query(query, ai_provider_name=st.session_state.ai_provider)
+        # Determine if it's a comparison query
+        comparison_keywords = ["compare", "comparison", "versus", "vs", "better price", "cheaper", "best deal", "better deal"]
+        is_comparison = any(keyword in query.lower() for keyword in comparison_keywords)
         
-        # Initialize search interface for getting results
-        search_deals = create_grocery_search_interface()
-        
-        # Clean up the query
-        clean_query = query.strip().rstrip('?').lower()
-        
-        # Check if it's a query about a specific product
-        # Common product categories
-        product_categories = [
-            "chicken", "beef", "pork", "meat", "fish", "seafood",
-            "fruit", "apple", "orange", "banana", "berry", "berries",
-            "vegetable", "broccoli", "carrot", "potato", "tomato",
-            "dairy", "milk", "cheese", "yogurt", "egg",
-            "bread", "bakery", "pastry"
-        ]
-        
-        specific_product = None
-        for category in product_categories:
-            if category in clean_query:
-                specific_product = category
-                break
-        
-        # Get search results for visualization
-        if specific_product:
-            results = search_deals(specific_product)
+        if is_comparison:
+            # Use the compare endpoint
+            response = requests.post(f"{API_BASE_URL}/api/compare", json=payload)
         else:
-            results = search_deals(query)
+            # Use the chat endpoint
+            response = requests.post(f"{API_BASE_URL}/api/chat", json=payload)
         
-        # Filter results by selected stores
-        if st.session_state.selected_stores:
-            results = filter_results_by_stores(results, st.session_state.selected_stores)
+        if response.status_code == 200:
+            # Extract the text response
+            response_data = response.json()
+            response_text = response_data.get("text", "")
+            
+            # Get search results for visualization
+            search_response = requests.get(
+                f"{API_BASE_URL}/api/search",
+                params={"query": query}
+            )
+            
+            if search_response.status_code == 200:
+                results = search_response.json()
+                
+                # Filter results by selected stores
+                if st.session_state.selected_stores:
+                    results = filter_results_by_stores(results, st.session_state.selected_stores)
+            else:
+                print(f"Error getting search results: {search_response.status_code}")
+                results = []
+        else:
+            print(f"Error from API: {response.status_code} - {response.text}")
+            response_text = f"Sorry, I encountered an error while processing your query. Status code: {response.status_code}"
+            results = []
     except Exception as e:
         # Handle any errors gracefully
         print(f"Error in process_query: {e}")
-        response = f"Sorry, I encountered an error while processing your query: {str(e)}"
+        response_text = f"Sorry, I encountered an error while processing your query: {str(e)}"
         results = []
     
     # Add assistant response to chat history
     st.session_state.messages.append({
         "role": "assistant", 
-        "content": response, 
+        "content": response_text, 
         "results": results,
         "ai_provider": st.session_state.ai_provider
     })
@@ -444,7 +444,7 @@ def process_query(query):
     # Set the flag to clear the input on next render
     st.session_state.should_clear = True
     
-    return response, results
+    return response_text, results
 
 def highlight_unit_prices(text):
     """Highlight unit prices in text for better visibility."""
@@ -504,7 +504,7 @@ def main():
     with st.sidebar:
         st.header("Filters")
         
-        # Get available stores
+        # Get available stores from API
         available_stores = get_available_stores()
         
         # Store selection
@@ -515,43 +515,21 @@ def main():
         )
         
         # AI provider selection
-        ai_options = []
-        if OPENAI_AVAILABLE:
-            ai_options.append("openai")
-        if GOOGLE_AVAILABLE:
-            ai_options.append("google")
-        ai_options.append("auto")  # Always include auto option
+        ai_options = ["openai", "google", "auto"]  # We don't know what's available on the server
         
-        # Get the current default provider from environment
+        # Get the current default provider
         default_provider = os.getenv("DEFAULT_AI_PROVIDER", "auto")
-        print(f"Default AI provider from .env: {default_provider}")
         
         # Initialize AI provider in session state if not already set
         if "ai_provider" not in st.session_state:
             st.session_state.ai_provider = default_provider
-            print(f"Initializing AI provider to: {st.session_state.ai_provider}")
         
         # Allow user to override the default provider
         st.session_state.ai_provider = st.selectbox(
             "Select AI provider:",
             options=ai_options,
-            index=ai_options.index(st.session_state.ai_provider) if st.session_state.ai_provider in ai_options else ai_options.index(default_provider) if default_provider in ai_options else 0
+            index=ai_options.index(st.session_state.ai_provider) if st.session_state.ai_provider in ai_options else ai_options.index("auto")
         )
-        print(f"Selected AI provider: {st.session_state.ai_provider}")
-        
-        # Show AI provider status
-        st.markdown("**AI Provider Status:**")
-        if OPENAI_AVAILABLE:
-            openai_status = "✅ OpenAI API is available" + (" (default)" if default_provider == "openai" else "")
-            st.markdown(openai_status)
-        else:
-            st.markdown("❌ OpenAI API is not available")
-        
-        if GOOGLE_AVAILABLE:
-            google_status = "✅ Google Gemini API is available" + (" (default)" if default_provider == "google" else "")
-            st.markdown(google_status)
-        else:
-            st.markdown("❌ Google Gemini API is not available")
         
         st.header("About")
         st.markdown("""
@@ -561,49 +539,6 @@ def main():
         
         Responses are generated using either OpenAI's GPT-4 model or Google's Gemini model.
         """)
-        
-        # Show data dates if available
-        try:
-            client = chromadb.PersistentClient(path="./grocery_deals_db")
-            collection_names = client.list_collections()
-            
-            if collection_names:
-                st.markdown("**Current deals as of:**")
-                for name in collection_names:
-                    try:
-                        # Skip if not a deals collection
-                        if not isinstance(name, str) or not name.endswith("_deals"):
-                            continue
-                            
-                        collection = client.get_collection(
-                            name=name,
-                            embedding_function=None  # We don't need the embedding function just to get metadata
-                        )
-                        
-                        # Extract store name from collection name
-                        store = name.replace("_deals", "").replace("_", " ").title()
-                        
-                        # Try to get date from metadata
-                        try:
-                            metadata = collection.metadata
-                            if metadata and "date" in metadata:
-                                date = metadata["date"]
-                            else:
-                                date = "Unknown"
-                        except Exception as date_error:
-                            print(f"Error getting date for {name}: {date_error}")
-                            date = "Unknown"
-                            
-                        st.markdown(f"- {store}: {date}")
-                    except Exception as e:
-                        print(f"Error getting collection {name}: {e}")
-        except Exception as e:
-            st.markdown(f"**Note:** Could not retrieve deals dates. Make sure to run the scrapers first. Error: {e}")
-    
-    # Check if at least one AI provider is available
-    if not OPENAI_AVAILABLE and not GOOGLE_AVAILABLE:
-        st.error("No AI providers are available. Please set either OPENAI_API_KEY or GOOGLE_API_KEY in your .env file.")
-        st.stop()
     
     # Display chat history
     for message in st.session_state.messages:

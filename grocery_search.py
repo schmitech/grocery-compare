@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import json
 from collections import defaultdict
 from ai_providers import get_ai_provider, OPENAI_AVAILABLE, OPENAI_API_NOT_AVAILABLE_MSG, GOOGLE_AVAILABLE, OpenAIProvider, GoogleProvider
+import traceback
 
 # Control debug printing
 DEBUG_PRINT = False
@@ -174,7 +175,13 @@ def create_grocery_search_interface():
         from scrapers.storage import GroceryDataStorage
         
         # Initialize the storage with the correct path
-        storage = GroceryDataStorage(db_path="./grocery_deals_db")
+        # PROBLEM: Hardcoded relative path may not work in all contexts
+        # storage = GroceryDataStorage(db_path="./grocery_deals_db")
+        
+        # FIX: Use absolute path instead
+        db_path = os.path.join(current_dir, "grocery_deals_db")
+        print(f"Using database path: {db_path}")
+        storage = GroceryDataStorage(db_path=db_path)
         
         # Create a search function
         def search_deals(query, n=10, store=None):
@@ -190,14 +197,38 @@ def create_grocery_search_interface():
                 list: List of matching deals
             """
             try:
+                # First, try an exact keyword match filter
+                exact_match_results = []
+                
+                # Convert query to lowercase for case-insensitive matching
+                query_lower = query.lower()
+                
+                # Extract key search terms
+                search_terms = query_lower.split()
+                primary_term = None
+                
+                # Find the primary product term (ignoring common words)
+                common_words = ["deals", "sale", "price", "cheap", "best", "on", "for", "the", "at"]
+                for term in search_terms:
+                    if term not in common_words and len(term) > 2:  # Ignore short terms
+                        primary_term = term
+                        break
+                
+                if primary_term:
+                    print(f"Primary search term: {primary_term}")
+                
+                # Perform the vector search
                 if store:
                     # Search in a specific store
-                    results = storage.query_store(store, query, n)
-                    if not results or not results["documents"] or not results["documents"][0]:
-                        return []
-                    
-                    # Convert to the same format as query_all_stores
-                    items = []
+                    results = storage.query_store(store, query, n=n*2)  # Get more results for filtering
+                else:
+                    # Search across all stores
+                    results = storage.query_all_stores(query, n=n*2)  # Get more results for filtering
+                
+                # Process results
+                items = []
+                
+                if store and results and results["documents"] and results["documents"][0]:
                     for i, (doc, metadata) in enumerate(zip(results["documents"][0], results["metadatas"][0])):
                         item = {
                             "name": metadata["name"],
@@ -217,18 +248,40 @@ def create_grocery_search_interface():
                             item["unit_price"] = metadata["unit_price"]
                         
                         items.append(item)
-                    
-                    return items
                 else:
-                    # Search across all stores
-                    return storage.query_all_stores(query, n)
+                    items = results  # For query_all_stores
+                
+                # Add debug output to see what's happening
+                print(f"Search returned {len(items)} items before filtering")
+                
+                # Apply keyword filtering if we have a primary term
+                if primary_term:
+                    filtered_items = []
+                    for item in items:
+                        # Check if the primary term appears in the name or description
+                        name = item.get("name", "").lower()
+                        description = item.get("description", "").lower()
+                        
+                        if primary_term in name or primary_term in description:
+                            filtered_items.append(item)
+                    
+                    # If we have filtered results, use them
+                    if filtered_items:
+                        print(f"Found {len(filtered_items)} items matching '{primary_term}'")
+                        return filtered_items[:n]  # Return only the requested number
+                
+                # If no filtered results or no primary term, return the original results
+                return items[:n]  # Return only the requested number
+                
             except Exception as e:
                 print(f"Error in search_deals: {e}")
+                traceback.print_exc()  # Add this to see the full error
                 return []
         
         return search_deals
     except Exception as e:
         print(f"Error creating search interface: {e}")
+        traceback.print_exc()  # Add this to see the full error
         
         # Return a dummy search function if there's an error
         return dummy_search
