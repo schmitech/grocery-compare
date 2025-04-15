@@ -20,12 +20,18 @@ This project scrapes weekly deals from multiple grocery stores (currently Produc
 
 ## Setup
 
-1. Install the required packages:
+1. Set environment
+   ```
+   python -m venv venv
+   source venv/bin/activate
+   ```
+
+2. Install the required packages:
    ```
    pip install -r requirements.txt
    ```
 
-2. Set up your OpenAI API key in a `.env` file in the parent directory:
+3. Set up your OpenAI API key in a `.env` file in the parent directory:
    ```
    OPENAI_API_KEY=your_api_key_here
    ```

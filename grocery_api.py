@@ -408,7 +408,7 @@ async def get_stores():
         
         # Extract store names from collections
         for name in collection_names:
-            if name.endswith("_deals"):
+            if isinstance(name, str) and name.endswith("_deals"):
                 store_name = name.replace("_deals", "").replace("_", " ").title()
                 available_stores.append(store_name)
                 

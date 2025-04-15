@@ -204,7 +204,7 @@ if "ai_provider" not in st.session_state:
     st.session_state.ai_provider = "auto"
 
 # API configuration
-API_BASE_URL = "http://localhost:8000"  # Change this to your API server address
+API_BASE_URL = "http://localhost:3000"  # Change this to your API server address
 
 def get_store_badge(store_name):
     """Generate HTML for a store badge with appropriate styling."""
@@ -385,23 +385,15 @@ def process_query(query):
     st.session_state.messages.append({"role": "user", "content": query})
     
     try:
-        # Call the API to process the query
+        # Format the request according to the SearchRequest model
         payload = {
             "query": query,
             "ai_provider": st.session_state.ai_provider,
             "selected_stores": st.session_state.selected_stores
         }
         
-        # Determine if it's a comparison query
-        comparison_keywords = ["compare", "comparison", "versus", "vs", "better price", "cheaper", "best deal", "better deal"]
-        is_comparison = any(keyword in query.lower() for keyword in comparison_keywords)
-        
-        if is_comparison:
-            # Use the compare endpoint
-            response = requests.post(f"{API_BASE_URL}/api/compare", json=payload)
-        else:
-            # Use the chat endpoint
-            response = requests.post(f"{API_BASE_URL}/api/chat", json=payload)
+        # Always use the chat endpoint for natural language queries
+        response = requests.post(f"{API_BASE_URL}/api/chat", json=payload)
         
         if response.status_code == 200:
             # Extract the text response
