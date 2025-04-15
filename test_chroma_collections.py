@@ -106,7 +106,7 @@ def main():
     list_all_collections(storage)
     
     # Define stores to test
-    stores = ["Metro Market", "SunnySide Foods"]
+    stores = ["Metro Market", "SunnySide Foods", "Maple Leaf Market", "True North Grocers", "Fresh Value Market"]
     
     # Test each store collection
     successful_stores = []
