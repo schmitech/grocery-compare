@@ -524,7 +524,33 @@ async def plain_text_response(request: SearchRequest):
     Process a query and return only the text response as plain text.
     """
     try:
-        # ... same processing code as before ...
+        # Get search results
+        results = search_interface(request.query)
+        
+        # Clean the data
+        results = clean_product_data(results)
+        
+        # Get the AI provider
+        from ai_providers import get_ai_provider
+        provider = get_ai_provider(request.ai_provider)
+        
+        if not results:
+            response_text = f"I couldn't find any specific deals for '{request.query}' in our database."
+        else:
+            # Create a prompt for the AI based on the query and results
+            prompt = f"""I'm looking for information about grocery deals matching: "{request.query}"
+
+Please provide a helpful summary of these deals. Focus on:
+1. Which stores have the best deals
+2. Price comparisons between stores
+3. Unit prices where available
+4. Any special offers or discounts
+5. Recommendations for the best value
+
+Format your response in a clear, easy-to-read way with headings and bullet points."""
+            
+            # Get response from the AI provider using our results
+            response_text = provider.get_response(prompt, results)
         
         # Return the text directly as plain text
         return response_text
