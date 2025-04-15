@@ -240,7 +240,9 @@ def create_grocery_search_interface():
                             items.append(item)
                 else:
                     # Search across all stores
-                    items = storage.query_all_stores(query, n=n*2)  # Get more results for filtering
+                    items = storage.query_all_stores(query)  # Get all results for filtering
+                    if items:
+                        items = items[:n*2]  # Limit results after getting them
                 
                 # Add debug output to see what's happening
                 print(f"Search returned {len(items)} items before filtering")
