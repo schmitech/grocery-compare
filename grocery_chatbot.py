@@ -463,10 +463,10 @@ def format_markdown(text):
     text = re.sub(r'(\d)([a-zA-Z])', r'\1 \2', text)
     
     # Fix spacing around store names
-    for store in ["Farm Boy", "Produce Depot", "Loblaws", "Metro", "Food Basics", "Walmart"]:
-        # Fix cases like "atFarm Boy" -> "at Farm Boy"
+    for store in ["SunnySide Foods", "Metro Market", "Loblaws", "Metro", "Food Basics", "Walmart"]:
+        # Fix cases like "atSunnySide Foods" -> "at SunnySide Foods"
         text = re.sub(f'([a-z])({store})', f'\\1 {store}', text)
-        # Fix cases like "Farm Boyhas" -> "Farm Boy has"
+        # Fix cases like "SunnySide Foodshas" -> "SunnySide Foods has"
         text = re.sub(f'({store})([a-z])', f'{store} \\2', text)
     
     # Ensure proper spacing after headings
@@ -492,7 +492,7 @@ def main():
     - Compare chicken prices between stores
     """)
     
-    # Sidebar with filters and information
+    # Sidebar with filters
     with st.sidebar:
         st.header("Filters")
         
@@ -505,32 +505,6 @@ def main():
             options=available_stores,
             default=st.session_state.selected_stores if st.session_state.selected_stores else available_stores
         )
-        
-        # AI provider selection
-        ai_options = ["openai", "google", "auto"]  # We don't know what's available on the server
-        
-        # Get the current default provider
-        default_provider = os.getenv("DEFAULT_AI_PROVIDER", "auto")
-        
-        # Initialize AI provider in session state if not already set
-        if "ai_provider" not in st.session_state:
-            st.session_state.ai_provider = default_provider
-        
-        # Allow user to override the default provider
-        st.session_state.ai_provider = st.selectbox(
-            "Select AI provider:",
-            options=ai_options,
-            index=ai_options.index(st.session_state.ai_provider) if st.session_state.ai_provider in ai_options else ai_options.index("auto")
-        )
-        
-        st.header("About")
-        st.markdown("""
-        This chatbot compares grocery deals across multiple stores.
-        
-        The data is scraped from each store's weekly specials and stored in a vector database (ChromaDB) for semantic search.
-        
-        Responses are generated using either OpenAI's GPT-4 model or Google's Gemini model.
-        """)
     
     # Display chat history
     for message in st.session_state.messages:
@@ -571,13 +545,9 @@ def main():
             "Ask about grocery deals...", 
             value=default_value, 
             key="user_query",
-            # This is the key - use autofocus attribute
             help="Press Enter to submit your question",
-            # Add a placeholder to make it more obvious
             placeholder="Type your question here...",
-            # Add label visibility to make it cleaner
             label_visibility="visible",
-            # Add a max chars to prevent very long queries
             max_chars=200
         )
         

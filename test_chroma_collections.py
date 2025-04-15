@@ -4,8 +4,8 @@ Test script to verify that grocery data was successfully loaded into ChromaDB co
 This script queries each store collection and displays sample results.
 
 Note: You must run the scrapers first to populate the database:
-- python -m scrapers.produceDepot
-- python -m scrapers.farmboy
+- python grocery_specials.py "Metro Market" ./weekly-specials/metromarket.json
+- python grocery_specials.py "SunnySide Foods" ./weekly-specials/sunnyside.json
 """
 
 import os
@@ -13,11 +13,12 @@ import sys
 import json
 from pprint import pprint
 
-# Add the project root to the path to allow importing modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-
 # Import the storage module
-from scrapers.storage import GroceryDataStorage
+from storage import GroceryDataStorage
+
+def get_collection_name(store_name):
+    """Convert store name to collection name format."""
+    return f"{store_name.lower().replace(' ', '_')}_deals"
 
 def test_collection(storage, store_name, query="fresh", num_results=3):
     """
@@ -34,6 +35,7 @@ def test_collection(storage, store_name, query="fresh", num_results=3):
     """
     print(f"\n{'='*50}")
     print(f"Testing collection for: {store_name}")
+    print(f"Collection name: {get_collection_name(store_name)}")
     print(f"{'='*50}")
     
     try:
@@ -75,8 +77,8 @@ def list_all_collections(storage):
         print("\nAvailable collections in ChromaDB:")
         if not collection_names:
             print("No collections found. Please run the scrapers first to populate the database.")
-            print("Run: python -m scrapers.produceDepot")
-            print("Run: python -m scrapers.farmboy")
+            print("Run: python grocery_specials.py \"Metro Market\" ./weekly-specials/metromarket.json")
+            print("Run: python grocery_specials.py \"SunnySide Foods\" ./weekly-specials/sunnyside.json")
             return
             
         for i, name in enumerate(collection_names):
@@ -93,8 +95,8 @@ def main():
     print("=" * 70)
     print("This script tests if data has been successfully loaded into ChromaDB.")
     print("If no collections are found, please run the scrapers first:")
-    print("  python -m scrapers.produceDepot")
-    print("  python -m scrapers.farmboy")
+    print("  python grocery_specials.py \"Metro Market\" ./weekly-specials/metromarket.json")
+    print("  python grocery_specials.py \"SunnySide Foods\" ./weekly-specials/sunnyside.json")
     print("=" * 70)
     
     # Initialize storage
@@ -104,7 +106,7 @@ def main():
     list_all_collections(storage)
     
     # Define stores to test
-    stores = ["Produce Depot", "Farm Boy"]
+    stores = ["Metro Market", "SunnySide Foods"]
     
     # Test each store collection
     successful_stores = []
@@ -124,8 +126,8 @@ def main():
     else:
         print("\nNo store collections were successfully tested.")
         print("Please make sure you've run the scrapers to populate the database:")
-        print("  python -m scrapers.produceDepot")
-        print("  python -m scrapers.farmboy")
+        print("  python grocery_specials.py \"Metro Market\" ./weekly-specials/metromarket.json")
+        print("  python grocery_specials.py \"SunnySide Foods\" ./weekly-specials/sunnyside.json")
     
     # Test a multi-store query
     if len(successful_stores) > 1:

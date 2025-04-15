@@ -16,6 +16,7 @@ from grocery_search import (
     get_openai_response
 )
 import chromadb
+from storage import GroceryDataStorage
 
 # Define data models
 class SearchRequest(BaseModel):
@@ -88,8 +89,6 @@ async def startup_event():
             print(f"  - Collection: {collection_name}")
         
         # Create the search interface using the existing function but with our path
-        from scrapers.storage import GroceryDataStorage
-        
         # Initialize the storage with the absolute path
         storage = GroceryDataStorage(db_path=DB_PATH)
         

@@ -25,6 +25,20 @@ class GroceryDataStorage:
             model_name="all-MiniLM-L6-v2"  # Lightweight model good for semantic search
         )
     
+    def _get_collection_name(self, store_name):
+        """
+        Get the standardized collection name for a store.
+        
+        Args:
+            store_name: Name of the grocery store
+            
+        Returns:
+            str: Standardized collection name
+        """
+        # Clean store name and ensure consistent format
+        store_name = store_name.strip()
+        return f"{store_name.lower().replace(' ', '_')}_deals"
+    
     def store_grocery_data(self, data, store_name):
         """
         Store grocery data in ChromaDB.
@@ -36,8 +50,8 @@ class GroceryDataStorage:
         Returns:
             The ChromaDB collection
         """
-        # Create a collection name from the store name
-        collection_name = f"{store_name.lower().replace(' ', '_')}_deals"
+        # Get standardized collection name
+        collection_name = self._get_collection_name(store_name)
         
         # Delete the collection if it exists to reset it
         try:
@@ -120,7 +134,7 @@ class GroceryDataStorage:
         Returns:
             Query results
         """
-        collection_name = f"{store_name.lower().replace(' ', '_')}_deals"
+        collection_name = self._get_collection_name(store_name)
         
         try:
             collection = self.client.get_collection(
@@ -152,7 +166,7 @@ class GroceryDataStorage:
         all_items = []
         
         try:
-            # Get all collection names - in ChromaDB v0.6.0, these are just strings
+            # Get all collection names
             collection_names = self.client.list_collections()
             print(f"Debug - Collection names: {collection_names}")
             

@@ -1,16 +1,15 @@
 # Grocery Deals Chatbot
 
-This project scrapes weekly deals from multiple grocery stores (currently Produce Depot and Farm Boy), stores them in a vector database, and provides a chatbot interface to query and compare deals across stores.
+This project scrapes weekly deals from multiple grocery stores (currently Metro Market and SunnySide Foods), stores them in a vector database, and provides a chatbot interface to query and compare deals across stores.
 
 ## Components
 
 1. **Scrapers**
-   - **scrapers/produceDepot.py** - Scrapes the Produce Depot website
-   - **scrapers/farmboy.py** - Loads Farm Boy deals from a JSON file
-   - **scrapers/storage.py** - Common storage module for all scrapers
+   - **grocery_specials.py** - Generic scraper for processing store specials from JSON files
+   - **storage.py** - Common storage module for all scrapers
 
 2. **Search and Interface**
-   - **grocery_search.py** - Provides search functionality, price comparison, and OpenAI integration
+   - **grocery_search.py** - Provides search functionality, price comparison, and AI integration
    - **grocery_chatbot.py** - Streamlit web interface for the chatbot
    - **grocery_api.py** - FastAPI backend for the chatbot
 
@@ -140,8 +139,8 @@ This interactive CLI allows you to ask questions about deals and compare prices 
 - What's the best deal in the meat section?
 - Do they have any organic produce on sale?
 - Which store has the better price on apples?
-- Compare prices for chicken between Farm Boy and Produce Depot.
-- What's on sale in the bakery section at Farm Boy?
+- Compare prices for chicken between SunnySide Foods and Metro Market.
+- What's on sale in the bakery section at SunnySide Foods?
 
 ## Price Comparison Features
 
@@ -157,10 +156,44 @@ The system can automatically detect comparison queries and provide detailed pric
 
 ## Adding a New Store
 
-To add a new grocery store:
+To add a new grocery store, you have two options:
 
-1. Create a new scraper in the `scrapers` directory (use `farmboy.py` as a template)
-2. Ensure it follows the standardized data format
+### Option 1: Using the Generic Scraper
+If you have a JSON file containing the store's specials in the correct format, you can use the generic scraper:
+
+1. Prepare your JSON file with the store's specials data
+2. Run the generic scraper:
+   ```bash
+   python scrapers/grocery_specials.py "Store Name" path/to/specials.json
+   ```
+3. Add the store to the list in `run_all_scrapers.py`
+4. Add the store name to the `store_keywords` dictionary in `grocery_search.py`
+
+### Option 2: Creating a Custom Scraper
+If you need to scrape data from a website or handle a different data format:
+
+1. Create a new scraper in the `scrapers` directory
+2. Ensure it follows the standardized data format:
+   ```python
+   {
+       "store": "Store Name",
+       "date": "Date Range",
+       "categories": [
+           {
+               "name": "Category Name",
+               "products": [
+                   {
+                       "name": "Product Name",
+                       "description": "Product Description",
+                       "price": "$Price",
+                       "unit": "Unit Type",
+                       "unit_price": UnitPrice
+                   }
+               ]
+           }
+       ]
+   }
+   ```
 3. Add the store to the list in `run_all_scrapers.py`
 4. Add the store name to the `store_keywords` dictionary in `grocery_search.py`
 

@@ -172,13 +172,9 @@ def create_grocery_search_interface():
         if current_dir not in sys.path:
             sys.path.append(current_dir)
             
-        from scrapers.storage import GroceryDataStorage
+        from storage import GroceryDataStorage
         
         # Initialize the storage with the correct path
-        # PROBLEM: Hardcoded relative path may not work in all contexts
-        # storage = GroceryDataStorage(db_path="./grocery_deals_db")
-        
-        # FIX: Use absolute path instead
         db_path = os.path.join(current_dir, "grocery_deals_db")
         print(f"Using database path: {db_path}")
         storage = GroceryDataStorage(db_path=db_path)
@@ -221,41 +217,36 @@ def create_grocery_search_interface():
                 if store:
                     # Search in a specific store
                     results = storage.query_store(store, query, n=n*2)  # Get more results for filtering
+                    items = []
+                    if results and results["documents"] and results["documents"][0]:
+                        for i, (doc, metadata) in enumerate(zip(results["documents"][0], results["metadatas"][0])):
+                            item = {
+                                "name": metadata["name"],
+                                "price": metadata["price"],
+                                "category": metadata["category"],
+                                "store": store,
+                                "date": metadata.get("date", "Unknown")
+                            }
+                            
+                            if "description" in metadata and metadata["description"]:
+                                item["description"] = metadata["description"]
+                            
+                            if "unit" in metadata:
+                                item["unit"] = metadata["unit"]
+                            
+                            if "unit_price" in metadata:
+                                item["unit_price"] = metadata["unit_price"]
+                            
+                            items.append(item)
                 else:
                     # Search across all stores
-                    results = storage.query_all_stores(query, n=n*2)  # Get more results for filtering
-                
-                # Process results
-                items = []
-                
-                if store and results and results["documents"] and results["documents"][0]:
-                    for i, (doc, metadata) in enumerate(zip(results["documents"][0], results["metadatas"][0])):
-                        item = {
-                            "name": metadata["name"],
-                            "price": metadata["price"],
-                            "category": metadata["category"],
-                            "store": store,
-                            "date": metadata.get("date", "Unknown")
-                        }
-                        
-                        if "description" in metadata and metadata["description"]:
-                            item["description"] = metadata["description"]
-                        
-                        if "unit" in metadata:
-                            item["unit"] = metadata["unit"]
-                        
-                        if "unit_price" in metadata:
-                            item["unit_price"] = metadata["unit_price"]
-                        
-                        items.append(item)
-                else:
-                    items = results  # For query_all_stores
+                    items = storage.query_all_stores(query, n=n*2)  # Get more results for filtering
                 
                 # Add debug output to see what's happening
                 print(f"Search returned {len(items)} items before filtering")
                 
                 # Apply keyword filtering if we have a primary term
-                if primary_term:
+                if primary_term and items:
                     filtered_items = []
                     for item in items:
                         # Check if the primary term appears in the name or description
@@ -434,8 +425,8 @@ def process_query(query, ai_provider_name=None):
         
         # Check if it's a store-specific query
         store_keywords = {
-            "produce depot": "Produce Depot",
-            "farm boy": "Farm Boy"
+            "Metro Market": "Metro Market",
+            "SunnySide Foods": "SunnySide Foods"
         }
         specific_store = None
         for keyword, store in store_keywords.items():
@@ -647,7 +638,7 @@ Here are some suggestions:
 1. Try searching for a more general category like "vegetables", "fruit", "meat", or "dairy"
 2. Check if the item is spelled correctly
 3. Try searching for a similar item that might be available
-4. You can also try searching for deals at a specific store like "Farm Boy" or "Produce Depot"
+4. You can also try searching for deals at a specific store like "SunnySide Foods" or "Metro Market"
 
 Would you like information about other grocery deals instead?"""
 

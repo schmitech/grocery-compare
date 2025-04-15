@@ -2,14 +2,12 @@ import json
 import os
 import re
 import sys
+import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Add parent directory to path to allow importing from parent directory
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
 # Load environment variables from .env file in the project root
-load_dotenv(dotenv_path="../.env")
+load_dotenv(dotenv_path=".env")
 
 def extract_unit_and_price(price_text, price_tag="", description_text=""):
     """
@@ -62,15 +60,19 @@ def extract_unit_and_price(price_text, price_tag="", description_text=""):
             
     return price, unit, unit_price
 
-def extract_farmboy_specials():
+def extract_specials(store_name, json_file_path):
     """
-    Extract weekly specials from Farm Boy JSON file.
+    Extract weekly specials from a store's JSON file.
     
+    Args:
+        store_name: Name of the store
+        json_file_path: Path to the JSON file containing the specials
+        
     Returns:
         dict: Standardized grocery data
     """
-    # Path to the JSON file
-    json_file_path = os.path.join(os.path.dirname(__file__), "farmboy-specials.json")
+    # Clean store name to prevent double underscores
+    store_name = store_name.strip()
     
     # Check if the file exists
     if not os.path.exists(json_file_path):
@@ -84,9 +86,6 @@ def extract_farmboy_specials():
     except Exception as e:
         print(f"Error loading JSON data: {e}")
         return None
-    
-    # Create a structured data object with the standardized schema
-    store_name = "Farm Boy"
     
     # Get the date range from the data
     # Use the first item's validfrom and validto dates
@@ -172,33 +171,42 @@ def extract_farmboy_specials():
             structured_data["categories"].append(category)
     
     # Save the structured data to a file
-    output_file = "farm_boy_specials_processed.json"
-    with open(output_file, "w", encoding='utf-8') as f:
-        json.dump(structured_data, f, indent=2)
+    # output_file = f"{store_name.lower().replace(' ', '_')}_specials_processed.json"
+    # with open(output_file, "w", encoding='utf-8') as f:
+    #     json.dump(structured_data, f, indent=2)
     
-    print(f"Data extracted and saved to {output_file}")
+    # print(f"Data extracted and saved to {output_file}")
     print(f"Found {sum(len(cat['products']) for cat in structured_data['categories'])} products in {len(structured_data['categories'])} categories")
     
     return structured_data
 
 def main():
     """Main function to run the scraper."""
+    # Set up argument parser
+    parser = argparse.ArgumentParser(description='Extract and process grocery store specials from JSON files.')
+    parser.add_argument('store_name', help='Name of the store (e.g., "Metro Market")')
+    parser.add_argument('json_file', help='Path to the JSON file containing the specials')
+    args = parser.parse_args()
+    
+    # Clean store name to prevent double underscores
+    store_name = args.store_name.strip()
+    
     # Extract data
-    data = extract_farmboy_specials()
+    data = extract_specials(store_name, args.json_file)
     
     if data:  # Add check in case extraction failed
-        # Import the storage module here to avoid circular imports
-        from scrapers.storage import GroceryDataStorage
+        # Import the storage module
+        from storage import GroceryDataStorage
         
         # Initialize storage and store the data
         storage = GroceryDataStorage()
-        collection = storage.store_grocery_data(data, "Farm Boy")
+        collection = storage.store_grocery_data(data, store_name)
         
         # Test a simple query
-        results = storage.query_store("Farm Boy", "fresh vegetables", 3)
+        results = storage.query_store(store_name, "fresh vegetables", 3)
         
         if results:
-            print("\nSample Query Results for 'fresh vegetables':")
+            print(f"\nSample Query Results for 'fresh vegetables' at {store_name}:")
             for i, (doc, metadata) in enumerate(zip(results["documents"][0], results["metadatas"][0])):
                 print(f"{i+1}. {metadata['name']} - {metadata['price']}")
                 if "description" in metadata and metadata["description"]:

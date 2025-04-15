@@ -118,7 +118,7 @@ IMPORTANT GUIDELINES:
 4. If a product has a unit price in the description (e.g., "$13.21/kg"), use this information in your comparison.
 5. Format your response using clean, simple markdown:
    - Use ### for main headings (e.g., "### Best Fruit Deals")
-   - Use #### for subheadings (e.g., "#### Farm Boy")
+   - Use #### for subheadings (e.g., "#### SunnySide Foods")
    - Use bullet points (- item) for lists
    - Use **bold** for important information
    - End your response with a "### Best Deal" section that summarizes the best options
@@ -225,7 +225,7 @@ IMPORTANT GUIDELINES:
 3. Clearly state which store has the better deal and WHY (e.g., "Store A's apples are cheaper at $1.99/lb vs Store B's $2.49/lb").
 4. Format your response using clean, simple markdown:
    - Use ### for main headings (e.g., "### Best Fruit Deals")
-   - Use #### for subheadings (e.g., "#### Farm Boy")
+   - Use #### for subheadings (e.g., "#### SunnySide Foods")
    - Use bullet points (- item) for lists
    - Use **bold** for important information
    - End your response with a "### Best Deal" section that summarizes the best options
