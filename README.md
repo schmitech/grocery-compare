@@ -45,7 +45,7 @@ python grocery_specials.py "True North Grocers" ./weekly-specials/true-north-gro
 
 To verify that the data was successfully loaded into the database:
 ```bash
-python test_chroma_collections.py
+python test_chroma_collections.py "organic milk"
 ```
 
 This will show sample results from each store collection.
